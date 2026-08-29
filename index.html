@@ -273,6 +273,12 @@ input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border: none; b
 #ammo-reserve { font-size: 22px; color: var(--dust); }
 #ammo-block.empty #ammo-mag { color: var(--red); }
 .weapon-name { font-size: 11px; letter-spacing: 0.24em; color: var(--dust); margin-top: 3px; }
+#weapon-slots { display: flex; gap: 4px; justify-content: flex-end; margin-top: 4px; }
+#weapon-slots span {
+  font-size: 10px; line-height: 16px; width: 16px; height: 16px; text-align: center;
+  color: var(--dust); border: 1px solid rgba(242, 178, 62, 0.28); border-radius: 2px;
+}
+#weapon-slots span.on { color: var(--ink); background: var(--gold); border-color: var(--gold); }
 
 #crosshair, #hitmarker {
   position: absolute; left: 50%; top: 50%; width: 0; height: 0;
@@ -365,6 +371,7 @@ input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border: none; b
 #btn-reload { grid-column: 1; grid-row: 1; }
 #btn-crouch { grid-column: 2; grid-row: 1; }
 #btn-jump   { grid-column: 3; grid-row: 1; }
+#btn-weapon { grid-column: 1; grid-row: 2; }
 #btn-aim    { grid-column: 2; grid-row: 2; }
 #btn-fire   { grid-column: 3; grid-row: 2; }
 
@@ -449,7 +456,8 @@ input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border: none; b
     </div>
     <div id="ammo-block">
       <span id="ammo-mag">30</span><span class="sep">/</span><span id="ammo-reserve">120</span>
-      <div class="weapon-name">MK-7 RIFLE</div>
+      <div id="weapon-name" class="weapon-name">MK-7 RIFLE</div>
+      <div id="weapon-slots"><span class="on">1</span><span>2</span><span>3</span></div>
     </div>
   </div>
 
@@ -465,6 +473,7 @@ input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border: none; b
     <button id="btn-reload" class="tbtn small">RELOAD</button>
     <button id="btn-crouch" class="tbtn small">CROUCH</button>
     <button id="btn-jump" class="tbtn small">JUMP</button>
+    <button id="btn-weapon" class="tbtn small">SWAP</button>
     <button id="btn-aim" class="tbtn mid">AIM</button>
     <button id="btn-fire" class="tbtn big">FIRE</button>
   </div>
@@ -499,6 +508,7 @@ input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border: none; b
           <dt>Left click</dt><dd>Fire</dd>
           <dt>Right click</dt><dd>Aim</dd>
           <dt>R</dt><dd>Reload</dd>
+          <dt>1 2 3 / Q</dt><dd>Change weapon</dd>
           <dt>Esc</dt><dd>Release mouse, pause</dd>
         </dl>
       </div>
@@ -511,8 +521,9 @@ input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border: none; b
           <dt>AIM</dt><dd>Hold to steady your aim</dd>
           <dt>JUMP / CROUCH</dt><dd>Get over and under cover</dd>
           <dt>RELOAD</dt><dd>Top up the magazine</dd>
+          <dt>SWAP</dt><dd>Next weapon: rifle, SMG, shotgun</dd>
         </dl>
-        <p class="note">Play in landscape. The rifle reloads on its own when the magazine runs dry.</p>
+        <p class="note">Play in landscape. Weapons reload on their own when empty, and you can keep dragging to look while your thumb is on FIRE.</p>
       </div>
     </div>
     <button id="btn-controls-back" class="mbtn">BACK</button>
@@ -622,27 +633,53 @@ const CFG = {
     fallDamageFrom: 12       // m/s downward
   },
 
-  weapon: {
-    name: 'MK-7 RIFLE',
-    magSize: 30,
-    reserveMax: 180,
-    startReserve: 120,
-    rpm: 690,
-    reloadTime: 2.1,
-    damage: 21,
-    headMultiplier: 2.0,
-    range: 120,
-    spreadHip: 0.028,
-    spreadAim: 0.006,
-    spreadMove: 0.030,
-    spreadPerShot: 0.007,
-    spreadMax: 0.075,
-    spreadRecover: 0.09,
-    recoilPitch: 0.021,
-    recoilYaw: 0.008,
-    recoilRecover: 7.5,
-    aimFov: 55,
-    hipFov: 76
+  // Three weapons that want different things from you: the rifle is the
+  // all-rounder, the SMG wins close-quarters brawls, the shotgun ends them.
+  weapons: [
+    {
+      id: 'rifle', name: 'MK-7 RIFLE', short: 'RIFLE', type: 'rifle',
+      magSize: 30, reserveMax: 180, startReserve: 120,
+      rpm: 690, reloadTime: 2.1, damage: 21, headMultiplier: 2.0,
+      pellets: 1, range: 120, auto: true,
+      spreadHip: 0.026, spreadAim: 0.005, spreadMove: 0.030,
+      spreadPerShot: 0.007, spreadMax: 0.072, spreadRecover: 0.09,
+      recoilPitch: 0.020, recoilYaw: 0.0075, recoilRecover: 7.5,
+      aimFov: 55, hip: { x: 0.17, y: -0.16, z: -0.34 }, aim: { x: 0, y: -0.077, z: -0.26 }
+    },
+    {
+      id: 'smg', name: 'HORUS SMG', short: 'SMG', type: 'smg',
+      magSize: 40, reserveMax: 240, startReserve: 160,
+      rpm: 920, reloadTime: 1.7, damage: 13, headMultiplier: 1.8,
+      pellets: 1, range: 70, auto: true,
+      spreadHip: 0.038, spreadAim: 0.014, spreadMove: 0.022,
+      spreadPerShot: 0.0065, spreadMax: 0.090, spreadRecover: 0.11,
+      recoilPitch: 0.013, recoilYaw: 0.0085, recoilRecover: 9.0,
+      aimFov: 63, hip: { x: 0.16, y: -0.15, z: -0.30 }, aim: { x: 0, y: -0.072, z: -0.22 }
+    },
+    {
+      id: 'shotgun', name: 'SAQR-12', short: 'SHOTGUN', type: 'shotgun',
+      magSize: 6, reserveMax: 48, startReserve: 30,
+      rpm: 96, reloadTime: 2.7, damage: 10, headMultiplier: 1.4,
+      pellets: 9, range: 34, auto: false,
+      spreadHip: 0.062, spreadAim: 0.040, spreadMove: 0.012,
+      spreadPerShot: 0.010, spreadMax: 0.095, spreadRecover: 0.20,
+      recoilPitch: 0.055, recoilYaw: 0.012, recoilRecover: 6.0,
+      aimFov: 67, hip: { x: 0.18, y: -0.17, z: -0.32 }, aim: { x: 0, y: -0.080, z: -0.24 }
+    }
+  ],
+
+  weaponSwitchTime: 0.42,
+  hipFov: 76,
+
+  // Hitting a moving target with a thumb is genuinely hard, so the crosshair
+  // gets a gentle pull towards an enemy it is already nearly on. It never
+  // fires for you and it never works through a wall.
+  aimAssist: {
+    touchPull: 3.4,        // radians per second at the centre of the cone
+    desktopPull: 0.8,
+    cone: 0.085,           // radians, about 5 degrees
+    range: 55,
+    touchSlowdown: 0.62    // look input scale while a target is in the cone
   },
 
   bot: {
@@ -669,13 +706,17 @@ const CFG = {
 
   render: {
     presets: {
-      LOW:    { pixelRatio: 1.0, shadows: false, fogFar: 62,  particles: 0.4, sunSize: 0 },
-      MEDIUM: { pixelRatio: 1.5, shadows: false, fogFar: 110, particles: 1.0, sunSize: 1 },
-      HIGH:   { pixelRatio: 2.0, shadows: true,  fogFar: 165, particles: 1.4, sunSize: 1 }
+      LOW:    { pixelRatio: 0.75, shadows: false, fogFar: 55,  particles: 0.4, sunSize: 0, dust: 0 },
+      MEDIUM: { pixelRatio: 1.15, shadows: false, fogFar: 95,  particles: 1.0, sunSize: 1, dust: 70 },
+      HIGH:   { pixelRatio: 1.8,  shadows: true,  fogFar: 160, particles: 1.4, sunSize: 1, dust: 160 }
     },
     fogColor: 0xE9A868,
     fogNear: 14
   },
+
+  // If the frame rate sags the game quietly renders at a lower resolution
+  // rather than letting the whole thing stutter.
+  adaptive: { targetFps: 50, minScale: 0.55, step: 0.12 },
 
   input: {
     mouseSensitivity: 1.0,
@@ -954,6 +995,8 @@ class InputState {
     this.lookDX = 0;     // radians to add this frame
     this.lookDY = 0;
     this.pausePressed = false;
+    this.weaponSlot = -1;    // 0..2 when a slot is picked this frame
+    this.switchNext = false; // cycle to the next weapon
   }
 
   // Called once per frame after the game has read it.
@@ -963,6 +1006,8 @@ class InputState {
     this.jump = false;
     this.reloadPressed = false;
     this.pausePressed = false;
+    this.weaponSlot = -1;    // 0..2 when a slot is picked this frame
+    this.switchNext = false; // cycle to the next weapon
   }
 
   reset() {
@@ -1138,15 +1183,35 @@ class Audio {
     return g;
   }
 
-  shot(distance, pan) {
+  // Each weapon gets its own report: the SMG snaps, the shotgun thumps.
+  shot(distance, pan, type) {
     if (!this.ready || !this.sfxOn) return;
     const t = this.ctx.currentTime;
     const dest = distance ? this._spatial(distance, pan || 0) : this.sfxBus;
-    this._noise(dest, t, 0.09, 0.55, 'bandpass', 1700, 0.9);
-    this._noise(dest, t, 0.20, 0.32, 'lowpass', 420);
-    this._tone(dest, t, 0.07, 220, 60, 0.28, 'square');
-    // A slap back off the buildings, which is most of what a street gunshot is.
-    this._noise(dest, t + 0.075, 0.22, 0.14, 'lowpass', 900);
+    if (type === 'smg') {
+      this._noise(dest, t, 0.06, 0.42, 'bandpass', 2400, 1.1);
+      this._noise(dest, t, 0.13, 0.20, 'lowpass', 620);
+      this._tone(dest, t, 0.05, 300, 90, 0.20, 'square');
+      this._noise(dest, t + 0.05, 0.14, 0.09, 'lowpass', 1100);
+    } else if (type === 'shotgun') {
+      this._noise(dest, t, 0.16, 0.75, 'lowpass', 900);
+      this._noise(dest, t, 0.34, 0.40, 'lowpass', 300);
+      this._tone(dest, t, 0.13, 140, 45, 0.34, 'square');
+      this._noise(dest, t + 0.11, 0.34, 0.18, 'lowpass', 700);
+    } else {
+      this._noise(dest, t, 0.09, 0.55, 'bandpass', 1700, 0.9);
+      this._noise(dest, t, 0.20, 0.32, 'lowpass', 420);
+      this._tone(dest, t, 0.07, 220, 60, 0.28, 'square');
+      // A slap back off the buildings, which is most of a street gunshot.
+      this._noise(dest, t + 0.075, 0.22, 0.14, 'lowpass', 900);
+    }
+  }
+
+  swap() {
+    if (!this.ready || !this.sfxOn) return;
+    const t = this.ctx.currentTime;
+    this._tone(this.sfxBus, t, 0.05, 420, 260, 0.12, 'square');
+    this._tone(this.sfxBus, t + 0.16, 0.05, 620, 380, 0.12, 'square');
   }
 
   dryFire() {
@@ -1155,14 +1220,17 @@ class Audio {
     this._tone(this.sfxBus, t, 0.04, 900, 300, 0.09, 'square');
   }
 
-  reload() {
+  // The clicks are spaced across the weapon's own reload time, so a fast
+  // magazine change sounds fast.
+  reload(duration) {
     if (!this.ready || !this.sfxOn) return;
+    const d = duration || 2.1;
     const t = this.ctx.currentTime;
-    this._tone(this.sfxBus, t + 0.05, 0.05, 300, 180, 0.16, 'square');   // mag out
+    this._tone(this.sfxBus, t + 0.05, 0.05, 300, 180, 0.16, 'square');       // mag out
     this._noise(this.sfxBus, t + 0.10, 0.08, 0.10, 'highpass', 2200);
-    this._tone(this.sfxBus, t + 1.15, 0.06, 220, 140, 0.20, 'square');   // mag in
-    this._tone(this.sfxBus, t + 1.65, 0.05, 520, 260, 0.18, 'square');   // charging handle
-    this._tone(this.sfxBus, t + 1.78, 0.05, 380, 190, 0.16, 'square');
+    this._tone(this.sfxBus, t + d * 0.55, 0.06, 220, 140, 0.20, 'square');   // mag in
+    this._tone(this.sfxBus, t + d * 0.80, 0.05, 520, 260, 0.18, 'square');   // charging handle
+    this._tone(this.sfxBus, t + d * 0.86, 0.05, 380, 190, 0.16, 'square');
   }
 
   footstep(running) {
@@ -1320,7 +1388,7 @@ const MAP_EXTENT = 32;
 // ---------------------------------------------------------------- builders
 
 // cx/cz are the centre, y is the bottom. sx/sy/sz are full sizes.
-function box(cx, y, cz, sx, sy, sz, color, tag, noCollide) {
+function box(cx, y, cz, sx, sy, sz, color, tag, noCollide, deco) {
   const b = {
     minX: cx - sx / 2, maxX: cx + sx / 2,
     minY: y, maxY: y + sy,
@@ -1328,13 +1396,14 @@ function box(cx, y, cz, sx, sy, sz, color, tag, noCollide) {
     color, tag: tag || 'world'
   };
   if (noCollide) b.nc = true;
+  if (deco) { b.nc = true; b.deco = true; }
   boxes.push(b);
   return b;
 }
 
 // Same thing expressed as two corners, which suits buildings better.
-function span(x0, x1, y, y1, z0, z1, color, tag, noCollide) {
-  return box((x0 + x1) / 2, y, (z0 + z1) / 2, x1 - x0, y1 - y, z1 - z0, color, tag, noCollide);
+function span(x0, x1, y, y1, z0, z1, color, tag, noCollide, deco) {
+  return box((x0 + x1) / 2, y, (z0 + z1) / 2, x1 - x0, y1 - y, z1 - z0, color, tag, noCollide, deco);
 }
 
 const SAND = 0xC9A97C;
@@ -1363,12 +1432,86 @@ function parapet(x0, x1, z0, z1, y, color) {
   span(x1 - t, x1, y, y + ph, z0 + t, z1 - t, color, 'parapet');
 }
 
+const GLASS = [0x3E4A52, 0x46525A, 0x36414A];
+const SHUTTER = [0x8C6A45, 0x7A5B3C, 0x9A7A52];
+const FABRIC = [0xC45A42, 0x2E7BA6, 0xD8A33C, 0x3F8F5E, 0xB0463F];
+
+// Windows, sills, shutters and the odd awning. Purely decorative, so this
+// adds character without changing collision, cover or navigation by a hair.
+function facade(x0, x1, z0, z1, h, color) {
+  const sill = shade(color, -0.16);
+  const rows = h > 5 ? [1.35, 3.45] : [1.35];
+
+  const wall = (fixed, from, to, axis, out) => {
+    for (let p = from + 1.5; p <= to - 1.5; p += 2.35) {
+      for (const y of rows) {
+        const glass = GLASS[Math.floor(Math.random() * GLASS.length)];
+        const shuttered = Math.random() < 0.30;
+        const c = shuttered ? SHUTTER[Math.floor(Math.random() * SHUTTER.length)] : glass;
+        if (axis === 'x') {
+          box(p, y, fixed + out * 0.07, 0.92, 1.12, 0.14, c, 'window', true, true);
+          box(p, y - 0.16, fixed + out * 0.12, 1.12, 0.12, 0.24, sill, 'window', true, true);
+          if (y < 2 && Math.random() < 0.22) {
+            box(p, y + 0.95, fixed + out * 0.42, 1.35, 0.1, 0.9,
+                FABRIC[Math.floor(Math.random() * FABRIC.length)], 'awning', true, true);
+          }
+        } else {
+          box(fixed + out * 0.07, y, p, 0.14, 1.12, 0.92, c, 'window', true, true);
+          box(fixed + out * 0.12, y - 0.16, p, 0.24, 0.12, 1.12, sill, 'window', true, true);
+          if (y < 2 && Math.random() < 0.22) {
+            box(fixed + out * 0.42, y + 0.95, p, 0.9, 0.1, 1.35,
+                FABRIC[Math.floor(Math.random() * FABRIC.length)], 'awning', true, true);
+          }
+        }
+      }
+    }
+  };
+
+  wall(z0, x0, x1, 'x', -1);
+  wall(z1, x0, x1, 'x', 1);
+  wall(x0, z0, z1, 'z', -1);
+  wall(x1, z0, z1, 'z', 1);
+
+  // A doorway on one side, so the ground floor is not a blank wall.
+  const doorX = (x0 + x1) / 2 + (Math.random() - 0.5) * (x1 - x0 - 3);
+  box(doorX, 0, z1 + 0.06, 1.15, 2.15, 0.12, 0x33261A, 'door', true, true);
+  box(doorX, 2.15, z1 + 0.14, 1.5, 0.12, 0.3, shade(color, -0.2), 'door', true, true);
+}
+
+// Roof clutter that reads as a lived-in city from the street below.
+function roofClutter(x0, x1, z0, z1, y) {
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  // satellite dishes
+  const dishes = 1 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < dishes; i++) {
+    const dx = x0 + 1.6 + Math.random() * (x1 - x0 - 3.2);
+    const dz = z0 + 1.6 + Math.random() * (z1 - z0 - 3.2);
+    box(dx, y, dz, 0.16, 0.7, 0.16, 0x8A8F96, 'prop', true, true);
+    box(dx, y + 0.7, dz, 0.95, 0.14, 0.95, 0xD6D2C8, 'prop', true, true);
+    box(dx, y + 0.84, dz, 0.2, 0.28, 0.2, 0x8A8F96, 'prop', true, true);
+  }
+  // a washing line with clothes on it
+  if (Math.random() < 0.8) {
+    const lz = cz + (Math.random() - 0.5) * (z1 - z0 - 4);
+    box(x0 + 1.2, y + 1.5, lz, 0.1, 1.5, 0.1, 0x7A6A58, 'prop', true, true);
+    box(x1 - 1.2, y + 1.5, lz, 0.1, 1.5, 0.1, 0x7A6A58, 'prop', true, true);
+    span(x0 + 1.2, x1 - 1.2, y + 2.28, y + 2.32, lz - 0.02, lz + 0.02, 0x6E6055, 'prop', true, true);
+    for (let x = x0 + 2.2; x < x1 - 1.8; x += 1.35) {
+      const drop = 0.5 + Math.random() * 0.5;
+      box(x, y + 2.3 - drop, lz, 0.55, drop, 0.06,
+          FABRIC[Math.floor(Math.random() * FABRIC.length)], 'prop', true, true);
+    }
+  }
+}
+
 function building(x0, x1, z0, z1, h, color) {
   span(x0, x1, 0, h, z0, z1, color, 'building');
   // A shallow band part way up breaks the flat face without costing much.
   span(x0 - 0.15, x1 + 0.15, h * 0.48, h * 0.48 + 0.25, z0 - 0.15, z1 + 0.15,
        shade(color, -0.12), 'building');
   parapet(x0, x1, z0, z1, h, shade(color, -0.06));
+  facade(x0, x1, z0, z1, h, color);
+  roofClutter(x0 + 0.4, x1 - 0.4, z0 + 0.4, z1 - 0.4, h + 0.9);
 }
 
 // A straight flight. axis is 'x' or 'z', sign is the direction of climb.
@@ -1658,6 +1801,49 @@ for (let pass = 0; pass < 3; pass++) {
   }
 }
 
+// ---------------------------------------------------------------- dressing
+// Everything below is decoration: it never collides and never affects the AI.
+
+function kerb(x0, x1, z0, z1) {
+  span(x0, x1, 0, 0.14, z0, z1, 0xB4A48C, 'kerb', true, true);
+}
+kerb(-3.7, -3.5, -MAP_EXTENT, MAP_EXTENT); kerb(3.5, 3.7, -MAP_EXTENT, MAP_EXTENT);
+kerb(-MAP_EXTENT, MAP_EXTENT, -3.7, -3.5); kerb(-MAP_EXTENT, MAP_EXTENT, 3.5, 3.7);
+
+function sign(cx, y, cz, w, d, color) {
+  box(cx, y, cz, w, 0.85, d, color, 'sign', true, true);
+  box(cx, y - 0.1, cz, w * 0.94, 0.08, d * 0.94, 0x2A2118, 'sign', true, true);
+}
+sign(-3.2, 3.1, -24, 0.18, 3.2, 0xC45A42);
+sign(-3.2, 3.1, -9, 0.18, 2.6, 0x2E7BA6);
+sign(3.2, 3.4, -12, 0.18, 3.0, 0xD8A33C);
+sign(10, 3.2, -24.8, 4.2, 0.18, 0x3F8F5E);
+sign(22, 3.4, -24.8, 3.4, 0.18, 0xC45A42);
+sign(3.2, 3.2, 9, 0.18, 2.8, 0xB0463F);
+sign(16.8, 3.3, 12, 0.18, 3.0, 0x2E7BA6);
+
+// Palms. Decorative so they can never block a route the bots rely on.
+function palm(cx, cz, h) {
+  box(cx, 0, cz, 0.34, h, 0.34, 0x6E5A42, 'palm', true, true);
+  box(cx, h * 0.45, cz, 0.4, 0.2, 0.4, 0x5E4C38, 'palm', true, true);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + Math.random() * 0.4;
+    box(cx + Math.cos(a) * 1.1, h - 0.25 + Math.sin(i) * 0.12, cz + Math.sin(a) * 1.1,
+        2.3, 0.12, 0.5, 0x4F7A3A, 'palm', true, true);
+  }
+  box(cx, h - 0.1, cz, 0.5, 0.4, 0.5, 0x5C7F3E, 'palm', true, true);
+}
+palm(-5.2, -5.2, 4.6); palm(5.2, 5.2, 5.2); palm(-5.4, 12, 4.2);
+palm(6.4, -28.4, 4.8); palm(-28.6, 2.4, 4.4); palm(28.6, -2.6, 5.0);
+palm(21, 31, 4.6); palm(-31, -8.5, 4.2);
+
+// Strings of lamps over the market, which is the one bit of warm light at
+// street level once the sun is this low.
+for (let x = 5; x < 29; x += 1.9) {
+  box(x, 3.6 - Math.sin((x - 5) * 0.5) * 0.18, -13.5, 0.16, 0.16, 0.16, 0xFFD98A, 'lamp', true, true);
+}
+span(4.5, 29.5, 3.62, 3.66, -13.52, -13.48, 0x4A4038, 'lamp', true, true);
+
 // ---------------------------------------------------------------- spawns
 
 spawn(-17.5, 0, -12, Math.PI * 0.5);
@@ -1808,7 +1994,12 @@ class World {
     this.boxes = boxes.filter(b => !b.nc);
     this.all = boxes;
     this.grid = new Map();
-    for (const b of this.boxes) this._insert(b);
+    for (const b of this.boxes) { b._stamp = 0; this._insert(b); }
+    // Scratch buffers, reused every frame. Allocating these per call was
+    // producing enough garbage to make the collector hitch mid-firefight.
+    this._stamp = 0;
+    this._candMove = [];
+    this._candQuery = [];
   }
 
   _key(cx, cz) { return cx * 4096 + cz; }
@@ -1826,9 +2017,12 @@ class World {
     }
   }
 
-  // Every box that could touch the given horizontal area.
+  // Every box that could touch the given horizontal area. Boxes are tagged
+  // with a stamp rather than searched for, so this stays linear.
   near(minX, maxX, minZ, maxZ, out) {
+    out = out || this._candQuery;
     out.length = 0;
+    const stamp = ++this._stamp;
     const x0 = Math.floor(minX / CELL), x1 = Math.floor(maxX / CELL);
     const z0 = Math.floor(minZ / CELL), z1 = Math.floor(maxZ / CELL);
     for (let cx = x0; cx <= x1; cx++) {
@@ -1837,7 +2031,7 @@ class World {
         if (!list) continue;
         for (let i = 0; i < list.length; i++) {
           const b = list[i];
-          if (out.indexOf(b) === -1) out.push(b);
+          if (b._stamp !== stamp) { b._stamp = stamp; out.push(b); }
         }
       }
     }
@@ -1850,7 +2044,7 @@ class World {
     const minX = x - radius, maxX = x + radius;
     const minZ = z - radius, maxZ = z + radius;
     const minY = y + 0.02, maxY = y + height;
-    const list = cands || this.near(minX, maxX, minZ, maxZ, []);
+    const list = cands || this.near(minX, maxX, minZ, maxZ, this._candQuery);
     for (let i = 0; i < list.length; i++) {
       const b = list[i];
       if (minX < b.maxX && maxX > b.minX &&
@@ -1868,7 +2062,7 @@ class World {
     const res = { grounded: false, hitWall: false, hitCeiling: false, landedFrom: 0 };
 
     const pad = Math.max(Math.abs(body.vx), Math.abs(body.vz)) * dt + r + 0.6;
-    const cands = this.near(body.x - pad, body.x + pad, body.z - pad, body.z + pad, []);
+    const cands = this.near(body.x - pad, body.x + pad, body.z - pad, body.z + pad, this._candMove);
 
     // --- vertical
     const dy = body.vy * dt;
@@ -2073,16 +2267,25 @@ class NavGraph {
     if (!start || !goal) return null;
     if (start.id === goal.id) return [{ x: goal.x, y: goal.y, z: goal.z }];
 
+    // The working arrays are allocated once and reset, not rebuilt on every
+    // path request - bots repath several times a second.
     const N = this.nodes.length;
-    const gScore = new Float64Array(N).fill(Infinity);
-    const fScore = new Float64Array(N).fill(Infinity);
-    const cameFrom = new Int32Array(N).fill(-1);
-    const closed = new Uint8Array(N);
+    if (!this._g || this._g.length !== N) {
+      this._g = new Float64Array(N);
+      this._f = new Float64Array(N);
+      this._from = new Int32Array(N);
+      this._closed = new Uint8Array(N);
+      this._open = [];
+    }
+    const gScore = this._g, fScore = this._f, cameFrom = this._from, closed = this._closed;
+    gScore.fill(Infinity); fScore.fill(Infinity); cameFrom.fill(-1); closed.fill(0);
     const h = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) + Math.abs(a.y - b.y) * 1.6;
 
     gScore[start.id] = 0;
     fScore[start.id] = h(start, goal);
-    const open = [start.id];
+    const open = this._open;
+    open.length = 0;
+    open.push(start.id);
 
     while (open.length) {
       // Small graph, so a linear scan for the best node is fine.
@@ -2198,9 +2401,11 @@ class Player {
     this.height = lerp(this.height, targetH, 1 - Math.pow(0.0001, dt));
 
     // Desired velocity in world space
+    // Forward is (-sin yaw, -cos yaw), matching lookDir and the camera, and
+    // right is (cos yaw, -sin yaw). W arrives as moveZ = -1.
     const sin = Math.sin(this.yaw), cos = Math.cos(this.yaw);
-    let wishX = input.moveX * cos - input.moveZ * sin;
-    let wishZ = -input.moveX * sin - input.moveZ * cos;
+    let wishX = input.moveX * cos + input.moveZ * sin;
+    let wishZ = -input.moveX * sin + input.moveZ * cos;
     const wishLen = Math.hypot(wishX, wishZ);
     if (wishLen > 1) { wishX /= wishLen; wishZ /= wishLen; }
 
@@ -2261,30 +2466,31 @@ class Player {
 
 
 /* ===== js/weapons/weapon.js ===== */
-// The rifle. This holds only state and numbers - the model, the muzzle flash
-// and the sound are elsewhere, so the same class can drive a remote player's
-// weapon when multiplayer arrives.
+// A weapon. Holds state and numbers only - the model, the flash and the sound
+// live elsewhere, so the same class can drive a remote player's gun later.
 
 
 const WeaponState = { IDLE: 'idle', FIRING: 'firing', RELOADING: 'reloading' };
 
 class Weapon {
-  constructor() {
-    const W = CFG.weapon;
-    this.name = W.name;
-    this.magSize = W.magSize;
-    this.ammo = W.magSize;
-    this.reserve = W.startReserve;
-    this.shotInterval = 60 / W.rpm;
+  constructor(spec) {
+    this.spec = spec;
+    this.id = spec.id;
+    this.name = spec.name;
+    this.magSize = spec.magSize;
+    this.ammo = spec.magSize;
+    this.reserve = spec.startReserve;
+    this.shotInterval = 60 / spec.rpm;
     this.cooldown = 0;
     this.reloadTimer = 0;
     this.state = WeaponState.IDLE;
-    this.spread = W.spreadHip;
+    this.spread = spec.spreadHip;
     this.recoilPitch = 0;
     this.recoilYaw = 0;
     this.aiming = false;
     this.shotsThisBurst = 0;
     this.kick = 0;              // 0..1, drives the view model animation
+    this.triggerHeld = false;   // semi-automatic weapons need a fresh pull
   }
 
   get reloading() { return this.state === WeaponState.RELOADING; }
@@ -2293,48 +2499,64 @@ class Weapon {
 
   reset() {
     this.ammo = this.magSize;
-    this.reserve = CFG.weapon.startReserve;
+    this.reserve = this.spec.startReserve;
     this.state = WeaponState.IDLE;
     this.reloadTimer = 0;
     this.cooldown = 0;
     this.recoilPitch = 0;
     this.recoilYaw = 0;
+    this.spread = this.spec.spreadHip;
   }
 
   startReload() {
     if (!this.canReload) return false;
     this.state = WeaponState.RELOADING;
-    this.reloadTimer = CFG.weapon.reloadTime;
+    this.reloadTimer = this.spec.reloadTime;
     return true;
+  }
+
+  cancelReload() {
+    if (this.reloading) { this.state = WeaponState.IDLE; this.reloadTimer = 0; }
   }
 
   // Returns null, or the parameters of a shot for the game to trace.
   tryFire(moving) {
+    const W = this.spec;
     if (this.cooldown > 0 || this.reloading) return null;
+    if (!W.auto && this.triggerHeld) return null;
     if (this.ammo <= 0) return null;
-    const W = CFG.weapon;
 
     this.ammo--;
     this.cooldown = this.shotInterval;
     this.shotsThisBurst++;
+    this.triggerHeld = true;
     this.kick = 1;
 
     const base = this.aiming ? W.spreadAim : W.spreadHip;
     const spread = clamp(this.spread + (moving ? W.spreadMove * 0.5 : 0), base, W.spreadMax);
     this.spread = Math.min(W.spreadMax, this.spread + W.spreadPerShot);
 
-    // Recoil rises quickly at first then flattens out, so bursts stay usable.
+    // Recoil climbs fast then flattens, so bursts stay learnable.
     const ramp = 1 - Math.min(0.55, this.shotsThisBurst * 0.05);
     this.recoilPitch += W.recoilPitch * ramp * (this.aiming ? 0.7 : 1);
     this.recoilYaw += (Math.random() - 0.5) * 2 * W.recoilYaw * ramp;
 
-    return { spread, damage: W.damage, range: W.range };
+    return {
+      spread,
+      damage: W.damage,
+      range: W.range,
+      pellets: W.pellets,
+      headMultiplier: W.headMultiplier
+    };
   }
 
+  releaseTrigger() { this.triggerHeld = false; }
+
   update(dt, firing) {
-    const W = CFG.weapon;
+    const W = this.spec;
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.kick = Math.max(0, this.kick - dt * 9);
+    if (!firing) this.triggerHeld = false;
 
     if (this.state === WeaponState.RELOADING) {
       this.reloadTimer -= dt;
@@ -2353,16 +2575,20 @@ class Weapon {
       this.spread = Math.max(base, this.spread - W.spreadRecover * dt * 4);
     }
 
-    // Recoil returns towards zero; the part the player has already compensated
-    // for is not given back, which is what makes recoil feel learnable.
     const rec = Math.pow(0.0005, dt);
     this.recoilPitch *= rec;
     this.recoilYaw *= rec;
   }
 
   addAmmo(rounds) {
-    this.reserve = Math.min(CFG.weapon.reserveMax, this.reserve + rounds);
+    this.reserve = Math.min(this.spec.reserveMax, this.reserve + rounds);
   }
+}
+
+// The player's loadout: one of each, switched with the number keys or the
+// on-screen button.
+function createLoadout() {
+  return CFG.weapons.map(spec => new Weapon(spec));
 }
 
 
@@ -2545,7 +2771,7 @@ class Bot {
     // After a long quiet spell, patrol towards where the player is rather than
     // wandering at random. Bots stay honest - they still have to see you to
     // shoot - but the map never goes silent for minutes at a time.
-    if (player && this.time - this.sawPlayerAt > 10) {
+    if (player && this.time - this.sawPlayerAt > 7) {
       const near = nodes.filter(n => n.links.length &&
         Math.hypot(n.x - player.x, n.z - player.z) < 16);
       if (near.length) return near[Math.floor(Math.random() * near.length)];
@@ -2560,14 +2786,19 @@ class Bot {
   }
 
   // A spot near us that the player cannot see. Cheap: test a handful of nodes.
+  // Deliberately cheap: a handful of candidates near the bot, not every node
+  // on the map. Casting a hundred rays in one frame was a visible stutter.
   _findCover(player) {
     const nodes = this.nav.nodes;
-    let best = null, bestScore = Infinity;
-    for (let i = 0; i < nodes.length; i += 2) {
+    let best = null, bestScore = Infinity, tested = 0;
+    const start = Math.floor(Math.random() * nodes.length);
+    for (let k = 0; k < nodes.length && tested < 14; k++) {
+      const i = (start + k) % nodes.length;
       const n = nodes[i];
       if (!n.links.length) continue;
       const d = Math.hypot(n.x - this.x, n.z - this.z);
       if (d > 16 || d < 3) continue;
+      tested++;
       if (this.world.clear(n.x, n.y + 1.4, n.z, player.x, player.eyeY, player.z)) continue;
       const score = d + Math.hypot(n.x - player.x, n.z - player.z) * -0.25;
       if (score < bestScore) { bestScore = score; best = n; }
@@ -2871,13 +3102,27 @@ const FACES = [
   { n: [0, -1, 0], v: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], light: 0.55 }
 ];
 
-function buildWorldMesh(boxes) {
+// The sun sits low in the west. Its direction is baked into the vertex
+// colours as a warm/cool tint on top of the real lighting, which is what makes
+// a city of plain boxes read as late afternoon rather than flat grey.
+const SUN = (() => {
+  const v = { x: -60, y: 42, z: -24 };
+  const l = Math.hypot(v.x, v.y, v.z);
+  return { x: v.x / l, y: v.y / l, z: v.z / l };
+})();
+const WARM = { r: 1.16, g: 0.94, b: 0.68 };
+const COOL = { r: 0.74, g: 0.80, b: 0.98 };
+
+function buildWorldMesh(boxes, includeDeco) {
   const positions = [];
   const normals = [];
   const colors = [];
   const c = new THREE.Color();
 
   for (const b of boxes) {
+    if (b.deco && !includeDeco) continue;
+    // A touch of per-box variation stops repeated colours looking printed.
+    const vary = 0.94 + ((Math.abs(b.minX * 31 + b.minZ * 17 + b.minY * 7) % 100) / 100) * 0.12;
     const sx = b.maxX - b.minX, sy = b.maxY - b.minY, sz = b.maxZ - b.minZ;
     for (const face of FACES) {
       const pts = face.v.map(v => [
@@ -2886,16 +3131,21 @@ function buildWorldMesh(boxes) {
         b.minZ + v[2] * sz
       ]);
       // two triangles
+      const nd = face.n[0] * SUN.x + face.n[1] * SUN.y + face.n[2] * SUN.z;
+      const lit = Math.max(0, nd);
       for (const idx of [0, 1, 2, 0, 2, 3]) {
         const p = pts[idx];
         positions.push(p[0], p[1], p[2]);
         normals.push(face.n[0], face.n[1], face.n[2]);
         c.setHex(b.color);
-        // Fake ambient occlusion: everything low down is a little darker, which
-        // gives the streets depth without a single shadow map.
-        const ao = 0.68 + 0.32 * Math.min(1, Math.max(0, p[1] / 4));
-        const f = face.light * ao;
-        colors.push(c.r * f, c.g * f, c.b * f);
+        // Fake ambient occlusion: everything low down is darker, so the streets
+        // have depth without costing a single shadow map.
+        const ao = 0.58 + 0.42 * Math.min(1, Math.max(0, p[1] / 5));
+        const f = face.light * ao * vary;
+        const tr = COOL.r + (WARM.r - COOL.r) * lit;
+        const tg = COOL.g + (WARM.g - COOL.g) * lit;
+        const tb = COOL.b + (WARM.b - COOL.b) * lit;
+        colors.push(c.r * f * tr, c.g * f * tg, c.b * f * tb);
       }
     }
   }
@@ -2918,9 +3168,9 @@ function buildSky() {
   const geo = new THREE.SphereGeometry(600, 20, 14);
   const colors = [];
   const pos = geo.attributes.position;
-  const top = new THREE.Color(0x2E2A55);
-  const mid = new THREE.Color(0xC9663B);
-  const low = new THREE.Color(0xF3B25C);
+  const top = new THREE.Color(0x241F4E);
+  const mid = new THREE.Color(0xC85C33);
+  const low = new THREE.Color(0xF7C071);
   const tmp = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const h = pos.getY(i) / 600;
@@ -2989,7 +3239,7 @@ function buildScene(quality) {
   const sky = buildSky();
   scene.add(sky);
 
-  const world = buildWorldMesh(MAP.boxes);
+  const world = buildWorldMesh(MAP.boxes, quality !== 'LOW');
   world.receiveShadow = preset.shadows;
   world.castShadow = preset.shadows;
   scene.add(world);
@@ -3015,18 +3265,64 @@ function buildScene(quality) {
   scene.add(sun);
   scene.add(sun.target);
 
-  // The sun itself, drawn as a flat disc on the sky.
+  const fill = new THREE.DirectionalLight(0x8FA6D8, 0.32);
+  fill.position.set(48, 26, 40);
+  scene.add(fill);
+
+  // The sun, with a soft glow around it and a few cloud bands catching light.
   if (preset.sunSize) {
+    const glow = new THREE.Mesh(
+      new THREE.CircleGeometry(88, 26),
+      new THREE.MeshBasicMaterial({
+        color: 0xFFB55E, fog: false, transparent: true, opacity: 0.28,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      })
+    );
+    glow.position.set(-352, 86, -147);
+    glow.lookAt(0, 40, 0);
+    scene.add(glow);
+
     const disc = new THREE.Mesh(
       new THREE.CircleGeometry(26, 24),
-      new THREE.MeshBasicMaterial({ color: 0xFFE6B0, fog: false, transparent: true, opacity: 0.95 })
+      new THREE.MeshBasicMaterial({ color: 0xFFE9BC, fog: false, transparent: true, opacity: 0.95 })
     );
     disc.position.set(-360, 90, -150);
     disc.lookAt(0, 40, 0);
     scene.add(disc);
+
+    const cloudMat = new THREE.MeshBasicMaterial({
+      color: 0xE9955C, fog: false, transparent: true, opacity: 0.5, depthWrite: false
+    });
+    for (let i = 0; i < 7; i++) {
+      const a = -2.6 + i * 0.42 + Math.random() * 0.2;
+      const r = 300 + Math.random() * 90;
+      const cloud = new THREE.Mesh(new THREE.BoxGeometry(90 + Math.random() * 70, 5, 26), cloudMat);
+      cloud.position.set(Math.cos(a) * r, 62 + Math.random() * 40, Math.sin(a) * r);
+      cloud.rotation.y = -a;
+      scene.add(cloud);
+    }
   }
 
-  return { scene, sun, hemi, world, sky, preset };
+  // Dust hanging in the air. Sixty specks is enough to feel the heat.
+  let dust = null;
+  if (preset.dust) {
+    const count = preset.dust;
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 60;
+      pos[i * 3 + 1] = Math.random() * 12 + 0.5;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 60;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    dust = new THREE.Points(geo, new THREE.PointsMaterial({
+      color: 0xFFDFAE, size: 0.09, transparent: true, opacity: 0.55,
+      sizeAttenuation: true, depthWrite: false, fog: true
+    }));
+    scene.add(dust);
+  }
+
+  return { scene, sun, hemi, world, sky, preset, dust };
 }
 
 
@@ -3085,7 +3381,17 @@ function createBotModel(color, shadows) {
   }
   hips.add(gun);
 
-  g.userData = { hips, legL, legR, armL, armR, head, gun, flash, phase: Math.random() * 6 };
+  // A soft blob under the feet. Without a contact shadow, characters look
+  // like they are hovering - and real shadows are too expensive on a phone.
+  const blob = new THREE.Mesh(
+    new THREE.CircleGeometry(0.52, 14),
+    new THREE.MeshBasicMaterial({ color: 0x1A1206, transparent: true, opacity: 0.34, depthWrite: false })
+  );
+  blob.rotation.x = -Math.PI / 2;
+  blob.position.y = 0.04;
+  g.add(blob);
+
+  g.userData = { hips, legL, legR, armL, armR, head, gun, flash, blob, phase: Math.random() * 6 };
   return g;
 }
 
@@ -3108,6 +3414,7 @@ function updateBotModel(model, bot, dt) {
   d.flash.material.opacity = bot.muzzleFlash > 0 ? 0.9 : 0;
   d.flash.rotation.z = Math.random() * 3;
 
+  if (d.blob) d.blob.visible = bot.alive;
   if (!bot.alive) {
     // Drop flat rather than vanish, so kills read clearly.
     model.rotation.x = lerp(model.rotation.x, -Math.PI / 2, Math.min(1, dt * 9));
@@ -3119,55 +3426,74 @@ function updateBotModel(model, bot, dt) {
 
 // ---------------------------------------------------------------- view model
 
-function createViewModel() {
+function createViewModel(spec) {
   const g = new THREE.Group();
-  const body = 0x3A3F46, metal = 0x22252A, grip = 0x4A3B2E;
+  const body = 0x3A3F46, metal = 0x22252A, wood = 0x4A3B2E;
 
-  g.add(boxMesh(0.085, 0.10, 0.66, body, 0, 0, -0.20));       // receiver
-  g.add(boxMesh(0.06, 0.06, 0.34, metal, 0, 0.005, -0.66));   // barrel
-  g.add(boxMesh(0.05, 0.05, 0.10, metal, 0, 0.005, -0.86));   // muzzle
-  g.add(boxMesh(0.07, 0.20, 0.11, body, 0, -0.14, 0.02));     // grip
-  g.add(boxMesh(0.075, 0.19, 0.13, 0x2C3037, 0, -0.15, -0.16)); // magazine
-  g.add(boxMesh(0.09, 0.09, 0.26, grip, 0, -0.01, 0.20));     // stock
-  g.add(boxMesh(0.02, 0.05, 0.02, metal, 0, 0.075, -0.62));   // front sight
-  g.add(boxMesh(0.05, 0.03, 0.03, metal, 0, 0.075, -0.02));   // rear sight
+  if (spec.type === 'smg') {
+    g.add(boxMesh(0.075, 0.095, 0.42, body, 0, 0, -0.10));
+    g.add(boxMesh(0.05, 0.05, 0.20, metal, 0, 0.005, -0.40));
+    g.add(boxMesh(0.065, 0.19, 0.10, body, 0, -0.13, 0.02));
+    g.add(boxMesh(0.07, 0.24, 0.09, 0x2C3037, 0, -0.17, -0.10));
+    g.add(boxMesh(0.05, 0.10, 0.20, body, 0, -0.02, 0.18));
+    g.add(boxMesh(0.02, 0.045, 0.02, metal, 0, 0.07, -0.36));
+    g.add(boxMesh(0.05, 0.028, 0.03, metal, 0, 0.07, 0.02));
+    g.userData = { muzzleZ: -0.52 };
+  } else if (spec.type === 'shotgun') {
+    g.add(boxMesh(0.085, 0.10, 0.60, body, 0, 0, -0.18));
+    g.add(boxMesh(0.062, 0.062, 0.50, metal, 0, 0.02, -0.52));
+    g.add(boxMesh(0.075, 0.055, 0.34, 0x2A2D33, 0, -0.055, -0.44));   // pump
+    g.add(boxMesh(0.07, 0.20, 0.11, wood, 0, -0.14, 0.02));
+    g.add(boxMesh(0.095, 0.10, 0.30, wood, 0, -0.015, 0.22));
+    g.add(boxMesh(0.022, 0.04, 0.022, metal, 0, 0.075, -0.74));
+    g.userData = { muzzleZ: -0.82 };
+  } else {
+    g.add(boxMesh(0.085, 0.10, 0.66, body, 0, 0, -0.20));
+    g.add(boxMesh(0.06, 0.06, 0.34, metal, 0, 0.005, -0.66));
+    g.add(boxMesh(0.05, 0.05, 0.10, metal, 0, 0.005, -0.86));
+    g.add(boxMesh(0.07, 0.20, 0.11, body, 0, -0.14, 0.02));
+    g.add(boxMesh(0.075, 0.19, 0.13, 0x2C3037, 0, -0.15, -0.16));
+    g.add(boxMesh(0.09, 0.09, 0.26, wood, 0, -0.01, 0.20));
+    g.add(boxMesh(0.02, 0.05, 0.02, metal, 0, 0.075, -0.62));
+    g.add(boxMesh(0.05, 0.03, 0.03, metal, 0, 0.075, -0.02));
+    g.userData = { muzzleZ: -0.94 };
+  }
 
   const flash = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.42, 0.42),
+    new THREE.PlaneGeometry(spec.type === 'shotgun' ? 0.6 : 0.42, spec.type === 'shotgun' ? 0.6 : 0.42),
     new THREE.MeshBasicMaterial({
       color: 0xFFDD9B, transparent: true, opacity: 0, fog: false,
       blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false
     })
   );
-  flash.position.set(0, 0.005, -0.94);
+  flash.position.set(0, 0.005, g.userData.muzzleZ);
   g.add(flash);
 
   for (const child of g.children) child.renderOrder = 10;
-  g.userData = { flash, flashTimer: 0 };
+  g.userData.flash = flash;
+  g.userData.flashTimer = 0;
+  g.userData.spec = spec;
   return g;
 }
 
-const HIP_POS = { x: 0.17, y: -0.16, z: -0.34 };
-const AIM_POS = { x: 0.0, y: -0.077, z: -0.26 };
-
 function updateViewModel(vm, weapon, player, dt, t) {
   const d = vm.userData;
+  const spec = weapon.spec;
   const aim = weapon.aiming ? 1 : 0;
   const speed = Math.min(1, player.speed2D / CFG.player.runSpeed);
 
-  const tx = lerp(HIP_POS.x, AIM_POS.x, aim);
-  const ty = lerp(HIP_POS.y, AIM_POS.y, aim);
-  const tz = lerp(HIP_POS.z, AIM_POS.z, aim);
+  const tx = lerp(spec.hip.x, spec.aim.x, aim);
+  const ty = lerp(spec.hip.y, spec.aim.y, aim);
+  const tz = lerp(spec.hip.z, spec.aim.z, aim);
 
-  // Bob and sway, damped right down while aiming.
   const bobAmp = (1 - aim * 0.85) * speed;
   const bobX = Math.cos(player.bobPhase * 2) * 0.016 * bobAmp;
   const bobY = Math.abs(Math.sin(player.bobPhase * 2)) * 0.018 * bobAmp;
   const idle = (1 - aim * 0.6) * 0.004;
 
   const kick = weapon.kick;
-  const recoilZ = kick * 0.075;
-  const recoilPitch = kick * 0.22;
+  const recoilZ = kick * (spec.type === 'shotgun' ? 0.13 : 0.075);
+  const recoilPitch = kick * (spec.type === 'shotgun' ? 0.34 : 0.22);
 
   vm.position.x = lerp(vm.position.x, tx + bobX + Math.sin(t * 1.1) * idle, Math.min(1, dt * 14));
   vm.position.y = lerp(vm.position.y, ty + bobY + Math.cos(t * 0.9) * idle, Math.min(1, dt * 14));
@@ -3175,13 +3501,15 @@ function updateViewModel(vm, weapon, player, dt, t) {
 
   let reloadRoll = 0, reloadDrop = 0;
   if (weapon.reloading) {
-    const p = 1 - weapon.reloadTimer / CFG.weapon.reloadTime;
-    const s = Math.sin(Math.min(1, p) * Math.PI);
-    reloadDrop = -0.16 * s;
-    reloadRoll = 0.85 * s;
+    const p = 1 - weapon.reloadTimer / spec.reloadTime;
+    const sw = Math.sin(Math.min(1, p) * Math.PI);
+    reloadDrop = -0.16 * sw;
+    reloadRoll = 0.85 * sw;
   }
-  vm.position.y += reloadDrop;
-  vm.rotation.x = lerp(vm.rotation.x, recoilPitch + reloadRoll * 0.4, Math.min(1, dt * 16));
+  // Swapping weapons drops the gun out of frame and brings the next one up.
+  const swap = vm.userData.swap || 0;
+  vm.position.y += reloadDrop - swap * 0.42;
+  vm.rotation.x = lerp(vm.rotation.x, recoilPitch + reloadRoll * 0.4 + swap * 0.5, Math.min(1, dt * 16));
   vm.rotation.z = lerp(vm.rotation.z, reloadRoll, Math.min(1, dt * 12));
 
   d.flashTimer = Math.max(0, d.flashTimer - dt);
@@ -3189,7 +3517,7 @@ function updateViewModel(vm, weapon, player, dt, t) {
   d.flash.rotation.z = Math.random() * 3.14;
 }
 
-function flashViewModel(vm) { vm.userData.flashTimer = 0.045; }
+function flashViewModel(vm) { vm.userData.flashTimer = 0.05; }
 
 
 /* ===== js/render/effects.js ===== */
@@ -3310,6 +3638,10 @@ class DesktopControls {
       if (!this.enabled) return;
       this.keys.add(e.code);
       if (e.code === 'KeyR') this.input.reloadPressed = true;
+      if (e.code === 'Digit1') this.input.weaponSlot = 0;
+      if (e.code === 'Digit2') this.input.weaponSlot = 1;
+      if (e.code === 'Digit3') this.input.weaponSlot = 2;
+      if (e.code === 'KeyQ') this.input.switchNext = true;
       if (e.code === 'Space') { this.input.jump = true; e.preventDefault(); }
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Tab'].includes(e.code)) e.preventDefault();
       this._syncKeys();
@@ -3333,6 +3665,11 @@ class DesktopControls {
       if (e.button === 0) this.input.fire = false;
       if (e.button === 2) this.input.aim = false;
     };
+    this._onWheel = (e) => {
+      if (!this.locked) return;
+      e.preventDefault();
+      this.input.switchNext = true;
+    };
     this._onContext = (e) => { if (this.enabled) e.preventDefault(); };
     this._onLockChange = () => {
       this.locked = document.pointerLockElement === this.canvas;
@@ -3348,6 +3685,7 @@ class DesktopControls {
     window.addEventListener('mousemove', this._onMouseMove);
     window.addEventListener('mousedown', this._onMouseDown);
     window.addEventListener('mouseup', this._onMouseUp);
+    window.addEventListener('wheel', this._onWheel, { passive: false });
     window.addEventListener('contextmenu', this._onContext);
     document.addEventListener('pointerlockchange', this._onLockChange);
   }
@@ -3408,7 +3746,8 @@ class MobileControls {
       aim: root.querySelector('#btn-aim'),
       jump: root.querySelector('#btn-jump'),
       crouch: root.querySelector('#btn-crouch'),
-      reload: root.querySelector('#btn-reload')
+      reload: root.querySelector('#btn-reload'),
+      weapon: root.querySelector('#btn-weapon')
     };
 
     this.moveTouch = null;
@@ -3434,6 +3773,7 @@ class MobileControls {
       if (name === 'crouch') this.input.crouch = on;
       if (on && name === 'jump') this.input.jump = true;
       if (on && name === 'reload') this.input.reloadPressed = true;
+      if (on && name === 'weapon') this.input.switchNext = true;
     };
     this._press = press;
 
@@ -3443,14 +3783,25 @@ class MobileControls {
         if (!this.enabled) return;
         e.preventDefault();
         e.stopPropagation();
-        for (const t of e.changedTouches) this.buttonTouches.set(t.identifier, name);
+        for (const t of e.changedTouches) {
+          this.buttonTouches.set(t.identifier, name);
+          // Holding FIRE or AIM should not cost you the ability to turn, so the
+          // same thumb can slide off the button and keep steering the view.
+          if ((name === 'fire' || name === 'aim') && this.lookTouch === null) {
+            this.lookTouch = t.identifier;
+            this.lookLast = { x: t.clientX, y: t.clientY };
+          }
+        }
         press(name, true);
       }, { passive: false });
 
       const release = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        for (const t of e.changedTouches) this.buttonTouches.delete(t.identifier);
+        for (const t of e.changedTouches) {
+          this.buttonTouches.delete(t.identifier);
+          if (t.identifier === this.lookTouch) this.lookTouch = null;
+        }
         // Crouch is a toggle-while-held, so only clear when no touch holds it.
         if (![...this.buttonTouches.values()].includes(name)) press(name, false);
       };
@@ -3557,7 +3908,7 @@ class UI {
       'rotate', 'mobile-controls', 'crosshair', 'hitmarker', 'killfeed',
       'health-fill', 'health-value', 'ammo-mag', 'ammo-reserve', 'ammo-block',
       'score-you', 'score-target', 'scoreboard-body', 'damage', 'result-title',
-      'result-line', 'result-table', 'fps', 'reload-hint', 'menu-hint', 'low-ammo'
+      'result-line', 'result-table', 'fps', 'reload-hint', 'menu-hint', 'low-ammo', 'weapon-name', 'weapon-slots'
     ];
     for (const id of ids) this.el[id] = document.getElementById(id);
 
@@ -3645,28 +3996,67 @@ class UI {
 
   // ------------------------------------------------------------ hud
 
-  updateHud(player, weapon, match, playerId) {
-    const hpPct = Math.max(0, Math.min(100, player.health));
-    this.el['health-fill'].style.width = hpPct + '%';
-    this.el['health-fill'].classList.toggle('low', hpPct <= 30);
-    this.el['health-value'].textContent = Math.ceil(hpPct);
+  // Style recalculation is expensive on a phone, so every write here is
+  // guarded: the DOM is only touched when a value has actually changed.
+  updateHud(player, weapon, match, playerId, weaponIndex) {
+    const c = this._cache || (this._cache = {});
 
-    this.el['ammo-mag'].textContent = weapon.ammo;
-    this.el['ammo-reserve'].textContent = weapon.reserve;
-    this.el['ammo-block'].classList.toggle('empty', weapon.ammo === 0);
-    this.el['low-ammo'].classList.toggle('open', weapon.ammo === 0 && !weapon.reloading);
-    this.el['reload-hint'].classList.toggle('open', weapon.reloading);
+    const hp = Math.ceil(Math.max(0, Math.min(100, player.health)));
+    if (hp !== c.hp) {
+      c.hp = hp;
+      this.el['health-fill'].style.width = hp + '%';
+      this.el['health-value'].textContent = hp;
+      const low = hp <= 30;
+      if (low !== c.low) { c.low = low; this.el['health-fill'].classList.toggle('low', low); }
+    }
+
+    if (weapon.ammo !== c.ammo) {
+      c.ammo = weapon.ammo;
+      this.el['ammo-mag'].textContent = weapon.ammo;
+      const empty = weapon.ammo === 0;
+      if (empty !== c.empty) {
+        c.empty = empty;
+        this.el['ammo-block'].classList.toggle('empty', empty);
+      }
+    }
+    if (weapon.reserve !== c.reserve) {
+      c.reserve = weapon.reserve;
+      this.el['ammo-reserve'].textContent = weapon.reserve;
+    }
+
+    const reloading = weapon.reloading;
+    if (reloading !== c.reloading) {
+      c.reloading = reloading;
+      this.el['reload-hint'].classList.toggle('open', reloading);
+    }
+    const dry = weapon.ammo === 0 && !reloading;
+    if (dry !== c.dry) {
+      c.dry = dry;
+      this.el['low-ammo'].classList.toggle('open', dry);
+    }
+
+    if (weapon.id !== c.weaponId) {
+      c.weaponId = weapon.id;
+      this.el['weapon-name'].textContent = weapon.name;
+      const pips = this.el['weapon-slots'].children;
+      for (let i = 0; i < pips.length; i++) pips[i].classList.toggle('on', i === weaponIndex);
+    }
 
     const you = match.scores.get(playerId);
-    this.el['score-you'].textContent = you ? you.kills : 0;
-    this.el['score-target'].textContent = match.killTarget;
+    const kills = you ? you.kills : 0;
+    if (kills !== c.kills) {
+      c.kills = kills;
+      this.el['score-you'].textContent = kills;
+      this.el['score-target'].textContent = match.killTarget;
+    }
 
-    const rows = match.standings().map(s =>
-      `<tr class="${s.id === playerId ? 'you' : ''}"><td>${s.name}</td><td>${s.kills}</td><td>${s.deaths}</td></tr>`
-    ).join('');
-    if (this._lastRows !== rows) {
-      this.el['scoreboard-body'].innerHTML = rows;
-      this._lastRows = rows;
+    // The scoreboard only ever changes when somebody dies.
+    const sig = match.standings().map(s => s.id + s.kills + '/' + s.deaths).join('|');
+    if (sig !== c.sig) {
+      c.sig = sig;
+      this.el['scoreboard-body'].innerHTML = match.standings().map(s =>
+        `<tr class="${s.id === playerId ? 'you' : ''}"><td>${s.name}</td><td>${s.kills}</td><td>${s.deaths}</td></tr>`
+      ).join('');
     }
   }
 
@@ -3678,6 +4068,8 @@ class UI {
     }
     this.el.crosshair.classList.toggle('aiming', aiming);
   }
+
+  resetHud() { this._cache = {}; }
 
   hit(killed) {
     this.hitTimer = killed ? 0.35 : 0.16;
@@ -3723,8 +4115,11 @@ class UI {
   }
 
   setFps(value, visible) {
-    this.el.fps.style.display = visible ? '' : 'none';
-    this.el.fps.textContent = value + ' FPS';
+    if (visible !== this._fpsVisible) {
+      this._fpsVisible = visible;
+      this.el.fps.style.display = visible ? '' : 'none';
+    }
+    if (visible) this.el.fps.textContent = value + ' FPS';
   }
 
   showResult(won, match, playerId) {
@@ -3769,13 +4164,18 @@ class Game {
     this.time = 0;
     this.frames = 0;
     this.fpsTime = 0;
-    this.fps = 0;
+    this.fps = 60;
+    this.renderScale = 1;
+    this.adaptCooldown = 3;
 
     this.world = new World(MAP.boxes);
     this.nav = NavGraph.build(this.world, MAP.navNodes);
 
     this.player = new Player(this.world);
-    this.weapon = new Weapon();
+    this.weapons = createLoadout();
+    this.weaponIndex = 0;
+    this.pendingWeapon = null;
+    this.switchTimer = 0;
     this.match = new Match(CFG.match.killTarget);
     this.bots = [];
     this.botModels = [];
@@ -3793,6 +4193,8 @@ class Game {
     requestAnimationFrame(this._loop);
   }
 
+  get weapon() { return this.weapons[this.weaponIndex]; }
+
   // ------------------------------------------------------------ setup
 
   _initRenderer() {
@@ -3802,15 +4204,25 @@ class Game {
       powerPreference: 'high-performance'
     });
     this.renderer.setClearColor(CFG.render.fogColor);
-    this.camera = new THREE.PerspectiveCamera(CFG.weapon.hipFov, 1, 0.05, 400);
+    this.camera = new THREE.PerspectiveCamera(CFG.hipFov, 1, 0.05, 400);
     this.camera.rotation.order = 'YXZ';
 
-    this.viewModel = createViewModel();
-    this.camera.add(this.viewModel);
+    // One view model per weapon, all parented to the camera.
+    this.viewModels = CFG.weapons.map((spec, i) => {
+      const vm = createViewModel(spec);
+      vm.visible = i === 0;
+      this.camera.add(vm);
+      return vm;
+    });
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 240));
+  }
+
+  _applyPixelRatio() {
+    const base = Math.min(window.devicePixelRatio || 1, this.preset.pixelRatio);
+    this.renderer.setPixelRatio(base * this.renderScale);
   }
 
   _buildWorld(quality) {
@@ -3820,6 +4232,7 @@ class Game {
 
     if (this.scene) {
       this.scene.traverse(obj => {
+        if (obj === this.camera || obj.isCamera) return;
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
           if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
@@ -3831,14 +4244,15 @@ class Game {
     const built = buildScene(quality);
     this.scene = built.scene;
     this.sun = built.sun;
+    this.dust = built.dust;
     this.scene.add(this.camera);
     this.effects = new Effects(this.scene, quality);
 
     this.renderer.shadowMap.enabled = preset.shadows;
     if (preset.shadows) this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, preset.pixelRatio));
+    this.renderScale = 1;
+    this._applyPixelRatio();
 
-    // Bot models belong to the scene, so they are rebuilt with it.
     this.botModels = [];
     for (const bot of this.bots || []) {
       const model = createBotModel(bot.color, preset.shadows);
@@ -3878,14 +4292,14 @@ class Game {
     this.match.addCombatant(PLAYER_ID, 'YOU');
     for (const bot of this.bots) this.match.addCombatant(bot.id, bot.name);
 
-    this.weapon.reset();
+    for (const w of this.weapons) w.reset();
+    this._setWeaponImmediate(0);
     this.player.spawnAt(this._chooseSpawn(null));
     for (const bot of this.bots) bot.spawnAt(this._chooseSpawn(bot));
     this.state = 'playing';
     this.time = 0;
   }
 
-  // Spawn as far as possible from everyone who is currently alive.
   _chooseSpawn(forBot) {
     const others = [];
     if (this.player.alive && forBot !== null) others.push(this.player);
@@ -3925,68 +4339,169 @@ class Game {
     this.ui.show('menu');
   }
 
+  // ------------------------------------------------------------ weapons
+
+  _setWeaponImmediate(index) {
+    for (let i = 0; i < this.viewModels.length; i++) {
+      this.viewModels[i].visible = i === index;
+      this.viewModels[i].userData.swap = 0;
+    }
+    this.weaponIndex = index;
+    this.pendingWeapon = null;
+    this.switchTimer = 0;
+  }
+
+  switchWeapon(index) {
+    if (index === this.weaponIndex || index < 0 || index >= this.weapons.length) return;
+    if (this.switchTimer > 0 || !this.player.alive) return;
+    this.weapon.cancelReload();
+    this.weapon.releaseTrigger();
+    this.pendingWeapon = index;
+    this.switchTimer = CFG.weaponSwitchTime;
+    this.audio.swap();
+  }
+
+  nextWeapon() { this.switchWeapon((this.weaponIndex + 1) % this.weapons.length); }
+
+  _updateSwitch(dt) {
+    if (this.switchTimer <= 0) return;
+    const total = CFG.weaponSwitchTime;
+    const prog = 1 - this.switchTimer / total;
+    const dip = Math.sin(Math.min(1, prog) * Math.PI);
+    this.viewModels[this.weaponIndex].userData.swap = dip;
+    if (prog >= 0.5 && this.pendingWeapon !== null) {
+      this.viewModels[this.weaponIndex].visible = false;
+      this.viewModels[this.weaponIndex].userData.swap = 0;
+      this.weaponIndex = this.pendingWeapon;
+      this.pendingWeapon = null;
+      this.viewModels[this.weaponIndex].visible = true;
+      this.viewModels[this.weaponIndex].userData.swap = dip;
+    }
+    this.switchTimer -= dt;
+    if (this.switchTimer <= 0) this.viewModels[this.weaponIndex].userData.swap = 0;
+  }
+
+  // ------------------------------------------------------------ aim assist
+
+  // Finds an enemy the crosshair is already nearly on, and only one you can
+  // actually see. Used to slow the look slightly and to pull very gently.
+  _assistTarget() {
+    const A = CFG.aimAssist;
+    const P = this.player;
+    if (!P.alive) return null;
+    const dir = lookDir(P.yaw, P.pitch);
+    let best = null, bestAngle = A.cone;
+    for (const bot of this.bots) {
+      if (!bot.alive) continue;
+      const ty = bot.y + bot.height * 0.6;
+      const dx = bot.x - P.x, dy = ty - P.eyeY, dz = bot.z - P.z;
+      const dist = Math.hypot(dx, dy, dz);
+      if (dist > A.range || dist < 0.5) continue;
+      const dot = clamp((dx * dir.x + dy * dir.y + dz * dir.z) / dist, -1, 1);
+      const angle = Math.acos(dot);
+      if (angle > bestAngle) continue;
+      if (!this.world.clear(P.x, P.eyeY, P.z, bot.x, ty, bot.z)) continue;
+      bestAngle = angle;
+      best = { bot, dx, dy, dz, dist, angle };
+    }
+    return best;
+  }
+
+  _applyAimPull(target, dt) {
+    const A = CFG.aimAssist;
+    const P = this.player;
+    const pull = this.isTouch ? A.touchPull : A.desktopPull;
+    const falloff = 1 - target.angle / A.cone;
+    const amount = Math.min(1, pull * falloff * dt);
+    const wantYaw = Math.atan2(-target.dx, -target.dz);
+    const wantPitch = Math.atan2(target.dy, Math.hypot(target.dx, target.dz));
+    P.yaw += angleDelta(P.yaw, wantYaw) * amount;
+    P.pitch += (wantPitch - P.pitch) * amount;
+  }
+
   // ------------------------------------------------------------ shooting
 
   _fire() {
+    const weapon = this.weapon;
     const moving = this.player.speed2D > 1.5;
-    const shot = this.weapon.tryFire(moving);
+    const shot = weapon.tryFire(moving);
     if (!shot) {
-      if (this.weapon.ammo === 0 && !this.weapon.reloading) this.audio.dryFire();
+      if (weapon.ammo === 0 && !weapon.reloading && !weapon.triggerHeld) this.audio.dryFire();
       return;
     }
 
-    this.audio.shot();
-    flashViewModel(this.viewModel);
+    this.audio.shot(0, 0, weapon.spec.type);
+    flashViewModel(this.viewModels[this.weaponIndex]);
 
-    const yaw = this.player.yaw - this.weapon.recoilYaw;
-    const pitch = this.player.pitch + this.weapon.recoilPitch;
-    let dir = lookDir(yaw, pitch);
-    dir = {
-      x: dir.x + (Math.random() - 0.5) * shot.spread * 2,
-      y: dir.y + (Math.random() - 0.5) * shot.spread * 2,
-      z: dir.z + (Math.random() - 0.5) * shot.spread * 2
-    };
-    const len = Math.hypot(dir.x, dir.y, dir.z);
-    dir.x /= len; dir.y /= len; dir.z /= len;
-
+    const yaw = this.player.yaw - weapon.recoilYaw;
+    const pitch = this.player.pitch + weapon.recoilPitch;
+    const base = lookDir(yaw, pitch);
     const ox = this.player.x, oy = this.player.eyeY, oz = this.player.z;
-    const wall = this.world.ray(ox, oy, oz, dir.x, dir.y, dir.z, shot.range, null);
-    let bestDist = wall ? wall.dist : shot.range;
-    let target = null;
 
-    for (const bot of this.bots) {
-      if (!bot.alive) continue;
-      const t = rayCylinder(ox, oy, oz, dir.x, dir.y, dir.z,
-        bot.x, bot.y, bot.z, bot.radius + 0.12, bot.height, bestDist);
-      if (t >= 0 && t < bestDist) { bestDist = t; target = bot; }
-    }
+    const hits = new Map();       // bot -> { damage, headshot, point }
+    let lastWall = null;
 
-    const end = { x: ox + dir.x * bestDist, y: oy + dir.y * bestDist, z: oz + dir.z * bestDist };
-    // Tracer starts at the muzzle, not the eye, or it looks like a laser sight.
-    const muzzle = {
-      x: ox + dir.x * 0.6 + Math.cos(this.player.yaw) * 0.12,
-      y: oy - 0.14,
-      z: oz + dir.z * 0.6 - Math.sin(this.player.yaw) * 0.12
-    };
-    this.effects.tracer(muzzle, end);
+    for (let p = 0; p < shot.pellets; p++) {
+      let dx = base.x + (Math.random() - 0.5) * shot.spread * 2;
+      let dy = base.y + (Math.random() - 0.5) * shot.spread * 2;
+      let dz = base.z + (Math.random() - 0.5) * shot.spread * 2;
+      const len = Math.hypot(dx, dy, dz);
+      dx /= len; dy /= len; dz /= len;
 
-    if (target) {
-      const headshot = end.y > target.y + target.height - 0.34;
-      const damage = Math.round(shot.damage * (headshot ? CFG.weapon.headMultiplier : 1));
-      const killed = target.damage(damage, this.player.x, this.player.z);
-      this.effects.burst(end, { x: -dir.x, y: -dir.y, z: -dir.z }, 0x9B2E24, killed ? 9 : 4);
-      this.ui.hit(killed);
-      if (killed) {
-        this.audio.kill();
-        this.match.registerKill(PLAYER_ID, target.id, headshot);
-        this.ui.feed({ killer: 'YOU', victim: target.name, headshot });
-        this._checkOver();
-      } else {
-        this.audio.hitMarker();
+      const wall = this.world.ray(ox, oy, oz, dx, dy, dz, shot.range, null);
+      let bestDist = wall ? wall.dist : shot.range;
+      let target = null;
+
+      for (const bot of this.bots) {
+        if (!bot.alive) continue;
+        const t = rayCylinder(ox, oy, oz, dx, dy, dz,
+          bot.x, bot.y, bot.z, bot.radius + 0.12, bot.height, bestDist);
+        if (t >= 0 && t < bestDist) { bestDist = t; target = bot; }
       }
-    } else if (wall) {
-      this.effects.burst(wall.point, wall.normal, 0xCDBBA0, 5);
+
+      const end = { x: ox + dx * bestDist, y: oy + dy * bestDist, z: oz + dz * bestDist };
+      // Only trace some pellets, or a shotgun blast becomes a wall of light.
+      if (shot.pellets === 1 || p % 3 === 0) {
+        const muzzle = {
+          x: ox + dx * 0.6 + Math.cos(this.player.yaw) * 0.12,
+          y: oy - 0.14,
+          z: oz + dz * 0.6 - Math.sin(this.player.yaw) * 0.12
+        };
+        this.effects.tracer(muzzle, end);
+      }
+
+      if (target) {
+        const headshot = end.y > target.y + target.height - 0.34;
+        const damage = shot.damage * (headshot ? shot.headMultiplier : 1);
+        const prev = hits.get(target) || { damage: 0, headshot: false, point: end };
+        prev.damage += damage;
+        prev.headshot = prev.headshot || headshot;
+        prev.point = end;
+        hits.set(target, prev);
+      } else if (wall) {
+        lastWall = wall;
+        if (shot.pellets === 1 || p % 2 === 0) this.effects.burst(wall.point, wall.normal, 0xCDBBA0, 4);
+      }
     }
+
+    if (lastWall && shot.pellets > 1) this.effects.burst(lastWall.point, lastWall.normal, 0xCDBBA0, 3);
+
+    let anyKill = false, anyHit = false;
+    for (const [bot, info] of hits) {
+      const killed = bot.damage(Math.round(info.damage), this.player.x, this.player.z);
+      this.effects.burst(info.point, { x: -base.x, y: -base.y, z: -base.z }, 0x9B2E24, killed ? 9 : 4);
+      anyHit = true;
+      if (killed) {
+        anyKill = true;
+        this.match.registerKill(PLAYER_ID, bot.id, info.headshot);
+        this.ui.feed({ killer: 'YOU', victim: bot.name, headshot: info.headshot });
+      }
+    }
+    if (anyHit) {
+      this.ui.hit(anyKill);
+      if (anyKill) this.audio.kill(); else this.audio.hitMarker();
+    }
+    if (anyKill) this._checkOver();
   }
 
   _checkOver() {
@@ -4003,31 +4518,40 @@ class Game {
   _updatePlaying(dt, input) {
     const P = this.player;
 
-    // Look
-    P.yaw -= input.lookDX;
-    P.pitch = clamp(P.pitch - input.lookDY, -CFG.input.maxPitch, CFG.input.maxPitch);
+    // Weapon switching
+    if (input.weaponSlot >= 0) this.switchWeapon(input.weaponSlot);
+    if (input.switchNext) this.nextWeapon();
+    this._updateSwitch(dt);
+    const weapon = this.weapon;
 
-    this.weapon.aiming = input.aim && P.alive && !this.weapon.reloading;
+    // Look, with a small slowdown while an enemy sits under the crosshair.
+    const target = this._assistTarget();
+    const slow = (target && this.isTouch) ? CFG.aimAssist.touchSlowdown : 1;
+    P.yaw -= input.lookDX * slow;
+    P.pitch = clamp(P.pitch - input.lookDY * slow, -CFG.input.maxPitch, CFG.input.maxPitch);
+    if (target && (input.fire || input.aim)) this._applyAimPull(target, dt);
+
+    weapon.aiming = input.aim && P.alive && !weapon.reloading && this.switchTimer <= 0;
 
     if (P.alive) {
       P.update(input, dt);
-      if (input.reloadPressed && this.weapon.canReload) {
-        if (this.weapon.startReload()) this.audio.reload();
+      if (input.reloadPressed && weapon.canReload && this.switchTimer <= 0) {
+        if (weapon.startReload()) this.audio.reload(weapon.spec.reloadTime);
       }
-      if (input.fire) this._fire();
-      // Reload automatically when the magazine runs dry - on a phone you cannot
-      // always reach the reload button in time.
-      if (this.weapon.ammo === 0 && this.weapon.canReload && !this.weapon.reloading) {
-        if (this.weapon.startReload()) this.audio.reload();
+      if (input.fire && this.switchTimer <= 0) this._fire();
+      if (!input.fire) weapon.releaseTrigger();
+      if (weapon.ammo === 0 && weapon.canReload && !weapon.reloading && this.switchTimer <= 0) {
+        if (weapon.startReload()) this.audio.reload(weapon.spec.reloadTime);
       }
     } else {
       P.respawnTimer -= dt;
       if (P.respawnTimer <= 0) {
         P.spawnAt(this._chooseSpawn(null));
-        this.weapon.reset();
+        for (const w of this.weapons) w.reset();
+        this._setWeaponImmediate(this.weaponIndex);
       }
     }
-    this.weapon.update(dt, input.fire);
+    weapon.update(dt, input.fire);
 
     // Bots
     const ctx = {
@@ -4049,9 +4573,8 @@ class Game {
         this.effects.tracer(from, to, 0xFFC46B);
         const dx = bot.x - P.x, dz = bot.z - P.z;
         const dist = Math.hypot(dx, dz);
-        // Pan by which side of the player the shot came from.
         const right = Math.cos(P.yaw) * dx - Math.sin(P.yaw) * dz;
-        this.audio.shot(dist, clamp(right / Math.max(4, dist), -1, 1));
+        this.audio.shot(dist, clamp(right / Math.max(4, dist), -1, 1), 'rifle');
       }
     };
 
@@ -4065,50 +4588,80 @@ class Game {
 
     this.match.update(dt);
 
-    // Camera follows the player, plus recoil.
     this.camera.position.set(P.x, P.eyeY, P.z);
-    this.camera.rotation.y = P.yaw - this.weapon.recoilYaw * 0.6;
-    this.camera.rotation.x = P.pitch + this.weapon.recoilPitch * 0.8;
-    // A little roll when strafing. Subtle, but it makes movement feel physical.
-    const strafe = (this.player.vx * Math.cos(P.yaw) - this.player.vz * Math.sin(P.yaw));
+    this.camera.rotation.y = P.yaw - weapon.recoilYaw * 0.6;
+    this.camera.rotation.x = P.pitch + weapon.recoilPitch * 0.8;
+    const strafe = (P.vx * Math.cos(P.yaw) - P.vz * Math.sin(P.yaw));
     this.camera.rotation.z = lerp(this.camera.rotation.z,
       clamp(-strafe * 0.006, -0.045, 0.045), Math.min(1, dt * 6));
 
-    const targetFov = this.weapon.aiming ? CFG.weapon.aimFov : CFG.weapon.hipFov;
+    const targetFov = weapon.aiming ? weapon.spec.aimFov : CFG.hipFov;
     if (Math.abs(this.camera.fov - targetFov) > 0.05) {
       this.camera.fov = lerp(this.camera.fov, targetFov, Math.min(1, dt * 12));
       this.camera.updateProjectionMatrix();
     }
 
-    updateViewModel(this.viewModel, this.weapon, P, dt, this.time);
-    this.viewModel.visible = P.alive;
+    updateViewModel(this.viewModels[this.weaponIndex], weapon, P, dt, this.time);
+    this.viewModels[this.weaponIndex].visible = P.alive;
 
-    this.ui.updateHud(P, this.weapon, this.match, PLAYER_ID);
-    this.ui.updateCrosshair(this.weapon.spread, this.weapon.aiming);
+    this.ui.updateHud(P, weapon, this.match, PLAYER_ID, this.weaponIndex);
+    this.ui.updateCrosshair(weapon.spread, weapon.aiming);
   }
 
-  // A slow drift over the rooftops behind the menu.
   _updateMenuCamera(dt) {
     this.menuAngle += dt * 0.045;
     const r = 34;
-    const x = Math.cos(this.menuAngle) * r;
-    const z = Math.sin(this.menuAngle) * r;
-    this.camera.position.set(x, 13 + Math.sin(this.menuAngle * 1.7) * 2.2, z);
+    this.camera.position.set(Math.cos(this.menuAngle) * r,
+      13 + Math.sin(this.menuAngle * 1.7) * 2.2, Math.sin(this.menuAngle) * r);
     this.camera.lookAt(0, 4.5, 0);
     this.camera.rotation.z = 0;
     if (Math.abs(this.camera.fov - 68) > 0.1) {
       this.camera.fov = lerp(this.camera.fov, 68, Math.min(1, dt * 4));
       this.camera.updateProjectionMatrix();
     }
-    this.viewModel.visible = false;
+    for (const vm of this.viewModels) vm.visible = false;
     for (const m of this.botModels) m.visible = false;
+  }
+
+  // If the frame rate sags, render fewer pixels rather than stutter.
+  _adapt(dt) {
+    const A = CFG.adaptive;
+    this.adaptCooldown -= dt;
+    if (this.adaptCooldown > 0) return;
+    if (this.fps < A.targetFps && this.renderScale > A.minScale) {
+      this.renderScale = Math.max(A.minScale, this.renderScale - A.step);
+      this._applyPixelRatio();
+      this.adaptCooldown = 2.5;
+    } else if (this.fps > A.targetFps + 12 && this.renderScale < 1) {
+      this.renderScale = Math.min(1, this.renderScale + A.step * 0.5);
+      this._applyPixelRatio();
+      this.adaptCooldown = 6;
+    }
+  }
+
+  // Motes rise slowly and wrap around the camera, so the air always has
+  // something in it wherever you are standing.
+  _updateDust(dt) {
+    if (!this.dust) return;
+    const arr = this.dust.geometry.attributes.position.array;
+    const cam = this.camera.position;
+    for (let i = 0; i < arr.length; i += 3) {
+      arr[i + 1] += dt * 0.22;
+      arr[i] += dt * 0.35;
+      if (arr[i + 1] > cam.y + 14) arr[i + 1] = cam.y - 4;
+      if (arr[i] - cam.x > 30) arr[i] -= 60;
+      if (arr[i] - cam.x < -30) arr[i] += 60;
+      if (arr[i + 2] - cam.z > 30) arr[i + 2] -= 60;
+      if (arr[i + 2] - cam.z < -30) arr[i + 2] += 60;
+    }
+    this.dust.geometry.attributes.position.needsUpdate = true;
   }
 
   _loop(now) {
     requestAnimationFrame(this._loop);
     let dt = (now - this.lastFrame) / 1000;
     this.lastFrame = now;
-    if (dt > 0.1) dt = 0.1;          // after a tab switch, do not teleport
+    if (dt > 0.1) dt = 0.1;
     if (dt <= 0) return;
     this.time += dt;
 
@@ -4119,6 +4672,7 @@ class Game {
     }
     if (this.input) this.input.clearFrame();
 
+    this._updateDust(dt);
     this.effects.update(dt);
     this.ui.tick(dt);
     this.renderer.render(this.scene, this.camera);
@@ -4130,6 +4684,7 @@ class Game {
       this.frames = 0;
       this.fpsTime = 0;
       this.ui.setFps(this.fps, this.settings.get('showFps'));
+      if (this.state === 'playing') this._adapt(this.fpsTime + 0.5);
     }
   }
 }

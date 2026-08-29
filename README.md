@@ -1,7 +1,7 @@
 # CAIRO ZERO
 
 A browser first-person shooter set in the back streets, market and rooftops of
-a fictional Old Cairo. Free-for-all against three bots, first to 10 kills.
+a fictional Old Cairo. Free-for-all against three bots, first to 10 kills. Three weapons.
 
 Runs on desktop, iPhone and Android. No install, no backend, no build step.
 
@@ -20,15 +20,26 @@ Runs on desktop, iPhone and Android. No install, no backend, no build step.
 | Left click | Fire |
 | Right click | Aim |
 | R | Reload |
+| 1 2 3, Q, scroll | Change weapon |
 | Esc | Release the mouse and pause |
 
 **Phone**
 
 Turn the phone sideways. Left thumb anywhere on the left half is the movement
 stick — push it to the edge to run. Right thumb drags to look. FIRE, AIM, JUMP,
-CROUCH and RELOAD sit under your right hand.
+CROUCH, RELOAD and SWAP sit under your right hand. You can slide your thumb
+off FIRE and keep turning, so you don't have to choose between shooting and
+looking.
 
-The rifle reloads on its own when the magazine runs dry.
+Weapons reload on their own when the magazine runs dry.
+
+## Weapons
+
+| | Feel | Good for |
+| --- | --- | --- |
+| MK-7 RIFLE | 30 rounds, steady, accurate | Everything, especially rooftops |
+| HORUS SMG | 40 rounds, very fast, sprays | Alleys and market stalls |
+| SAQR-12 | 6 shells, 9 pellets a shot | Corners, doorways, point blank |
 
 ---
 
@@ -82,7 +93,9 @@ Almost everything worth tuning lives in `js/config.js`:
 - `match.killTarget` — kills needed to win (10)
 - `match.botCount` — number of bots (3)
 - `bot.accuracy`, `bot.reactionTime`, `bot.damage` — how hard the bots are
-- `weapon.damage`, `weapon.rpm`, `weapon.magSize` — how the rifle feels
+- `weapons[]` — one entry per weapon: `damage`, `rpm`, `magSize`, `pellets`, spread and recoil
+- `aimAssist.touchPull` — how much the crosshair helps on a phone; set to 0 to turn it off
+- `adaptive.targetFps` — the frame rate the game tries to hold by lowering resolution
 - `player.walkSpeed`, `player.runSpeed`, `player.jumpSpeed` — movement
 
 The map is data, not a model file. `js/world/mapdata.js` builds Old Cairo out
@@ -95,6 +108,32 @@ alley (it seals it), and any new roof access needs an `opening()` cutting the
 parapet, or players will hit an invisible wall.
 
 ---
+
+## Graphics
+
+The whole city is still a single draw call, so detail is nearly free while
+pixels are not. Buildings have windows, shutters, sills, awnings and doorways;
+roofs have satellite dishes and washing lines; the streets have kerbs, shop
+signs, palms and a string of lamps over the market. Sunset direction is baked
+into the geometry as a warm/cool tint, there is a glow and cloud bands around
+the sun, dust hangs in the air, and characters cast a soft contact shadow.
+
+All of the decoration is non-colliding, so it changes how the map looks without
+changing how it plays. LOW graphics skips the decoration entirely.
+
+## Performance
+
+Phones render at a lower resolution than the screen's full pixel density, and
+if the frame rate drops below about 50 the game quietly lowers it further
+rather than stuttering. If it still feels heavy, switch Graphics to LOW in
+Settings — that cuts the resolution and the draw distance together.
+
+## Aiming help
+
+On a phone the crosshair slows slightly and pulls gently towards an enemy it is
+already nearly on, but only one you can actually see, and it never fires for
+you. Desktop gets a much weaker version. Both are in `aimAssist` in
+`js/config.js`.
 
 ## Multiplayer later
 
