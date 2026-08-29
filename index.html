@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#120E1C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="CAIRO ZERO - a browser first-person shooter set on the rooftops and back streets of Old Cairo.">
+<title>CAIRO ZERO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="loading">
+  <div class="load-mark">CAIRO ZERO</div>
+  <div class="load-sub">Loading</div>
+</div>
+
+<div id="boot-error">
+  <div class="panel">
+    <h2>Cannot start</h2>
+    <p class="boot-detail">Something went wrong while loading.</p>
+    <p class="boot-hint">Reload the page to try again.</p>
+  </div>
+</div>
+
+<!-- ------------------------------------------------------------ HUD -->
+<div id="hud">
+  <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+  <div id="hitmarker"><i></i><i></i><i></i><i></i></div>
+  <div id="damage"></div>
+
+  <div class="hud-top">
+    <div id="scorebar">
+      <span class="label">KILLS</span>
+      <span id="score-you">0</span>
+      <span class="slash">/</span>
+      <span id="score-target">10</span>
+    </div>
+    <div id="killfeed"></div>
+    <button id="btn-pause" aria-label="Pause">II</button>
+  </div>
+
+  <table id="scoreboard"><tbody id="scoreboard-body"></tbody></table>
+
+  <div class="hud-bottom">
+    <div id="health">
+      <div class="bar"><div id="health-fill"></div></div>
+      <div class="readout"><span id="health-value">100</span><span class="unit">HP</span></div>
+    </div>
+    <div id="ammo-block">
+      <span id="ammo-mag">30</span><span class="sep">/</span><span id="ammo-reserve">120</span>
+      <div class="weapon-name">MK-7 RIFLE</div>
+    </div>
+  </div>
+
+  <div id="reload-hint">RELOADING</div>
+  <div id="low-ammo">OUT OF AMMO</div>
+  <div id="fps">60 FPS</div>
+</div>
+
+<!-- ------------------------------------------------------ touch controls -->
+<div id="mobile-controls">
+  <div id="stick"><div id="stick-knob"></div></div>
+  <div id="touch-buttons">
+    <button id="btn-reload" class="tbtn small">RELOAD</button>
+    <button id="btn-crouch" class="tbtn small">CROUCH</button>
+    <button id="btn-jump" class="tbtn small">JUMP</button>
+    <button id="btn-aim" class="tbtn mid">AIM</button>
+    <button id="btn-fire" class="tbtn big">FIRE</button>
+  </div>
+</div>
+
+<!-- ------------------------------------------------------------ screens -->
+<div id="menu" class="screen">
+  <div class="menu-inner">
+    <div class="eyebrow">Old Cairo &middot; free-for-all</div>
+    <h1 class="title">CAIRO ZERO</h1>
+    <div class="rule"></div>
+    <nav class="menu-buttons">
+      <button id="btn-play" class="mbtn primary">PLAY</button>
+      <button id="btn-controls" class="mbtn">CONTROLS</button>
+      <button id="btn-settings" class="mbtn">SETTINGS</button>
+    </nav>
+    <p id="menu-hint" class="hint"></p>
+  </div>
+</div>
+
+<div id="controls-screen" class="screen">
+  <div class="panel">
+    <h2>Controls</h2>
+    <div class="cols">
+      <div>
+        <h3>Keyboard &amp; mouse</h3>
+        <dl>
+          <dt>W A S D</dt><dd>Move</dd>
+          <dt>Shift</dt><dd>Run</dd>
+          <dt>Space</dt><dd>Jump</dd>
+          <dt>Ctrl / C</dt><dd>Crouch</dd>
+          <dt>Left click</dt><dd>Fire</dd>
+          <dt>Right click</dt><dd>Aim</dd>
+          <dt>R</dt><dd>Reload</dd>
+          <dt>Esc</dt><dd>Release mouse, pause</dd>
+        </dl>
+      </div>
+      <div>
+        <h3>Touch</h3>
+        <dl>
+          <dt>Left thumb</dt><dd>Move. Push to the edge to run</dd>
+          <dt>Right thumb</dt><dd>Drag anywhere to look</dd>
+          <dt>FIRE</dt><dd>Hold for automatic fire</dd>
+          <dt>AIM</dt><dd>Hold to steady your aim</dd>
+          <dt>JUMP / CROUCH</dt><dd>Get over and under cover</dd>
+          <dt>RELOAD</dt><dd>Top up the magazine</dd>
+        </dl>
+        <p class="note">Play in landscape. The rifle reloads on its own when the magazine runs dry.</p>
+      </div>
+    </div>
+    <button id="btn-controls-back" class="mbtn">BACK</button>
+  </div>
+</div>
+
+<div id="settings-screen" class="screen">
+  <div class="panel">
+    <h2>Settings</h2>
+
+    <div class="row">
+      <span class="row-label">Graphics</span>
+      <div class="seg">
+        <button id="gfx-LOW" class="segbtn">LOW</button>
+        <button id="gfx-MEDIUM" class="segbtn">MEDIUM</button>
+        <button id="gfx-HIGH" class="segbtn">HIGH</button>
+      </div>
+    </div>
+
+    <div class="row" id="mouse-sens-row">
+      <span class="row-label">Mouse sensitivity</span>
+      <input id="set-sens" type="range" min="20" max="300" value="100">
+    </div>
+
+    <div class="row" id="touch-sens-row">
+      <span class="row-label">Touch sensitivity</span>
+      <input id="set-touch-sens" type="range" min="20" max="300" value="100">
+    </div>
+
+    <div class="row">
+      <span class="row-label">Sound</span>
+      <label class="switch"><input id="set-sound" type="checkbox" checked><span></span></label>
+    </div>
+
+    <div class="row">
+      <span class="row-label">Music &amp; ambience</span>
+      <label class="switch"><input id="set-music" type="checkbox" checked><span></span></label>
+    </div>
+
+    <div class="row">
+      <span class="row-label">Invert look</span>
+      <label class="switch"><input id="set-invert" type="checkbox"><span></span></label>
+    </div>
+
+    <button id="btn-settings-back" class="mbtn">BACK</button>
+  </div>
+</div>
+
+<div id="pause" class="screen">
+  <div class="panel narrow">
+    <h2>Paused</h2>
+    <button id="btn-resume" class="mbtn primary">RESUME</button>
+    <button id="btn-quit" class="mbtn">QUIT TO MENU</button>
+  </div>
+</div>
+
+<div id="result" class="screen">
+  <div class="panel narrow">
+    <h2 id="result-title">VICTORY</h2>
+    <p id="result-line"></p>
+    <table id="result-table"></table>
+    <button id="btn-again" class="mbtn primary">PLAY AGAIN</button>
+    <button id="btn-result-menu" class="mbtn">MAIN MENU</button>
+  </div>
+</div>
+
+<div id="rotate">
+  <div class="rotate-inner">
+    <div class="phone"></div>
+    <p>ROTATE YOUR PHONE</p>
+    <span>CAIRO ZERO plays in landscape</span>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
